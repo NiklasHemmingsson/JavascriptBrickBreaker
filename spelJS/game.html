@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+    
+<head>
+    <title>JS-spel</title>
+    
+    <script src="jquery-3.3.1.js"></script>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <link rel="shortcut icon" type="image/jpg" href="favicon16.jpg"/>
+</head>
+
+<body>
+    
+    <canvas id="myCanvas" width="800" height="500"></canvas>
+    
+    <audio id="musik" controls>
+        <source src ="oceanman.mp3">
+    </audio>
+   
+    
+             
+    <script>
+        //Audio Volume Control
+        var audio = document.getElementById("musik");
+        audio.volume= 0.2;
+        
+        
+        var animate = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (callback) {
+            window.setTimeout(callback, 1000 / 60)
+        };
+        
+        var canvas = document.getElementById("myCanvas");
+        var context = canvas.getContext("2d");
+        var player = new Player();
+        
+        //Ger bollen en slumpmässig startpunkt mellan 50-600
+        var randomBallX = Math.floor((Math.random() * 600) + 50);
+        var ball = new Ball(randomBallX, 200);
+        
+        
+        
+        //Sparar vilka knappar man trycker på
+        var keysDown = {};
+        var xSpeed;
+        var ySpeed;
+        var lives = 3;
+        
+        var paused = false;
+        var pausedFalse = setTimeout(function(){
+            paused = true;
+            console.log(paused);
+            clearTimeout();
+            
+        }, 1);
+        
+        
+        
+        var timeLeft = 3;
+        var downloadTimer = setInterval(function(){
+            canvas.width = canvas.width;
+            context.font = "48px Arial";
+            context.fillStyle = "#000000";
+            context.fillText(timeLeft, 390, 300);
+                
+            timeLeft--;   
+                   
+            
+            //if-sats för att skriva ut när countdown når 0.
+            if(timeLeft <= -1)
+            {
+                console.log(timeLeft);
+                clearInterval(downloadTimer);
+                paused = false;
+                console.log(paused);
+            }                                 
+                                       
+        }, 1000);
+        
+        
+        
+        
+        //Paus-knapp
+        function keyDownHandler(e)
+        {
+            if(e.keyCode == 79)
+            {
+                paused = true;
+                console.log(paused);
+                if(paused == true){
+                pauseScreen();
+            }
+            }
+            
+            if(e.keyCode == 13){
+                location.reload();
+            }
+            
+                
+        }
+        
+        //Resume-knapp
+        function keyUpHandler(e)
+        {
+            if(e.keyCode == 80)
+            {
+                paused = false;
+                console.log(paused);
+            }
+        }
+        
+        //Anropar det som ska animeras.
+         var step = function(){
+             if(paused == false)
+                 {
+                    update();
+                     
+                }
+             render();
+             animate(step);
+        }
+        
+        //Allt som skrivs ut i canvas.
+        var render = function(){ 
+            player.render();
+            ball.render();
+            drawBricks(); 
+            drawLives();
+            drawScore();
+            drawInstructions();
+            
+        }
+        
+        //Rörelse och fysik av boll och player.
+        var update = function(){
+            canvas.width = canvas.width;
+            player.update();
+            ball.update(player.paddle);
+            
+        }
+         
+        
+        var x;
+        var y;
+        var brickRowCount = 2;
+        var brickColumnCount = 6;
+        var brickWidth = 80;
+        var brickHeight = 30;
+        var brickPadding = 30;
+        var brickOffsetTop = 60;
+        var brickOffsetLeft = 90;
+        
+        var score = 0;
+            
+            var bricks = [];
+            for(i = 0; i<brickColumnCount ; i++)
+            {   
+                bricks[i] = [];
+                for (j = 0; j<brickRowCount ; j++){
+                    
+                    bricks[i][j] = {x: 0, y:0, status:1};
+                }
+            }
+        
+       function pauseScreen(){
+            context.font = "48px Arial";
+            context.fillStyle = "#000000";
+            context.fillText("Pausat", 330, 250);
+       }
+        
+        function drawBricks(){ 
+            
+            for(i = 0; i<brickColumnCount ; i++)
+            {   
+                for (j = 0; j<brickRowCount ; j++){
+                    if(bricks[i][j].status == 1){
+                    var brickX = (i*(brickWidth+brickPadding))+brickOffsetLeft;
+                    var brickY = (j*(brickHeight+brickPadding))+brickOffsetTop;
+                    bricks[i][j].x = brickX;
+                    bricks[i][j].y = brickY;
+                    
+                    context.fillStyle = "rgb(255, 255, 255)";
+                    context.fillRect(brickX, brickY, brickWidth, brickHeight);
+                }
+                }
+            }
+        }
+        function drawLives() {
+            context.font = "48px Arial";
+            context.fillStyle = "#000000";
+            context.fillText("Lives: " + lives, 8, 400);
+        }
+            
+        function drawScore() {
+        context.font = "48px Arial";
+        context.fillStyle = "#000000";
+        context.fillText("Score: "+score, 8, 48);
+       } 
+ 
+        function drawInstructions(){
+        context.font = "24px Arial";
+        context.fillStyle = "#000000";
+        context.fillText("O för paus. P för resume. Enter för omstart", 330, 28);
+        }
+        
+        /* Paddelfunktioner */
+        function Player() {
+            this.paddle = new Paddle(365, 450, 70, 20);
+            }
+        
+        Player.prototype.render = function () {
+            this.paddle.render();
+        };
+
+        Player.prototype.update = function () {
+            for (var key in keysDown) {
+            var value = Number(key);
+            if (value == 37) {
+                this.paddle.move(-10, 0);
+            } else if (value == 39) {
+                this.paddle.move(10, 0);
+            } else {
+                this.paddle.move(0, 0);
+            }
+        }
+        };
+        
+
+        function Paddle(x, y, width, height) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.x_speed = 0;
+            this.y_speed = 0;
+        }
+        
+        Paddle.prototype.render = function () {
+            context.fillStyle = "#FFFFFF";
+            context.fillRect(this.x, this.y, this.width, this.height);
+        };
+        
+        Paddle.prototype.move = function (x, y) {
+            this.x += x;
+            this.y += y;
+            this.x_speed = x;
+            this.y_speed = y;
+            if (this.x < 0) {
+                this.x = 0;
+                this.x_speed = 0;
+            } else if (this.x + this.width > 800) {
+                this.x = 800 - this.width;
+                this.x_speed = 0;
+            }
+        };
+        
+ 
+        /* Bollfunktioner */
+        function Ball(x,y){
+            this.x = Math.floor(Math.random() * 700) + 50;
+            this.y = y;
+            this.y_speed = -6;
+            this.x_speed = Math.random() < 0.5 ? -5 : 5;
+             //Skapa en countdown
+            //for-loop för 3-2-1
+            
+        
+        Ball.prototype.render = function () {
+        context.beginPath();
+        context.arc(this.x, this.y, 10, 2 * Math.PI, false);
+        context.fillStyle = "#FFFFFF";
+        context.fill();
+        };
+         
+        Ball.prototype.update = function(paddle1) {
+
+        this.x += this.x_speed;
+        this.y += this.y_speed;
+        var top_x = this.x - 5;
+        var top_y = this.y - 5;
+        var bottom_x = this.x + 5;
+        var bottom_y = this.y + 5;
+
+        if (this.x - 5 < 0) {
+            this.x_speed= -this.x_speed;
+            
+        } else if (this.x + 5 > 800) {
+            this.x_speed = -this.x_speed;
+        }
+
+        if (this.y -5 < 0) {
+            this.y_speed = -this.y_speed;
+        }else if(this.y > 495){
+            this.x_speed = Math.random() < 0.5 ? -5 : 5;
+            this.y_speed = -6;
+            this.x = Math.floor(Math.random() * 700) + 50;
+            this.y = 200;
+            if(lives >= 1){
+                lives--;
+            }
+        }
+        
+        if (top_y > 400) {
+            if (top_y < (paddle1.y + paddle1.height) && bottom_y > paddle1.y && top_x < (paddle1.x + paddle1.width) && bottom_x > paddle1.x) {
+                this.y_speed = -6;
+                    //this.x_speed += (paddle1.x_speed / 2);
+                this.y += this.y_speed;
+        
+            }
+        }
+            
+           for(i = 0; i<brickColumnCount ; i++)
+            {
+                for (j = 0; j<brickRowCount ; j++){
+                    
+                    var b = bricks[i][j];
+                    if(b.status == 1) {
+                    //om boll-x > bricks.x && boll-x < bricks.x + dess bredd
+                    //om boll-y > bricks.y && boll-y > bricks.y + dess höjd
+                        if(this.x+10 > b.x && this.x-10 < b.x+brickWidth && this.y+10 > b.y && this.y-10 < b.y+brickHeight) {
+                         //Ändra riktning
+                            this.y_speed = -this.y_speed;
+                            b.status = 0;
+                            
+                            if(lives >= 1){
+                                score++;
+                            }
+                        }
+                      
+                    }
+                    
+                    if(score == brickRowCount*brickColumnCount) {
+                                
+                            setTimeout(function() { 
+                                 
+                                if(window.confirm('Du klarade världens lättaste spel, grattis antar jag... ')) {
+                                    //window.location.href="http://home.mi.sh.se/~sh17hp1695/spelJS/";
+                                    window.location.reload();
+                                     window.confirm = false;
+                                }
+                                else {
+                                    window.confirm = false;
+                                    //Do nothing
+                                };
+                            
+                            }, 10);
+                            
+                    }
+      
+                    }
+              
+            }
+            
+            if(lives == 0){
+                setTimeout(function() { 
+                if(window.confirm('Du dog. Snälla försök inte igen, för allas skull....')){
+                    //window.location.href="http://home.mi.sh.se/~sh17hp1695/spelJS/";
+                    window.location.reload();
+                    window.confirm = false;
+                    
+                }
+                else {
+                    window.confirm = false;
+                }
+                    }, 10);
+            }
+        }
+            };
+        
+        animate(step);
+        
+        window.addEventListener("keydown", function (event) {
+            keysDown[event.keyCode] = true;
+        });
+
+        window.addEventListener("keyup", function (event) {
+            delete keysDown[event.keyCode];
+        });
+        
+        document.addEventListener("keydown", keyDownHandler, false);
+        document.addEventListener("keyup", keyUpHandler, false);
+      
+        
+        
+    </script>
+    
+        
+    </body>
+
+</html>
+
